@@ -2,16 +2,12 @@ package com.api.recommendation.services.impl;
 
 import com.api.recommendation.models.User;
 import com.api.recommendation.models.UserRating;
+import com.api.recommendation.models.UserRecommendation;
 import com.api.recommendation.repository.RatingRepository;
+import com.api.recommendation.repository.RecommendationRepository;
 import com.api.recommendation.repository.UserRepository;
 import com.api.recommendation.services.RecommendationService;
 import com.opencsv.CSVWriter;
-import com.opencsv.bean.StatefulBeanToCsv;
-import com.opencsv.bean.StatefulBeanToCsvBuilder;
-
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
-import org.apache.commons.csv.QuoteMode;
 import org.apache.mahout.cf.taste.impl.model.file.FileDataModel;
 import org.apache.mahout.cf.taste.impl.neighborhood.ThresholdUserNeighborhood;
 import org.apache.mahout.cf.taste.impl.recommender.GenericUserBasedRecommender;
@@ -24,23 +20,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.apache.mahout.cf.taste.impl.similarity.CityBlockSimilarity;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.Writer;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
-import org.apache.commons.csv.QuoteMode;
 @Service
 public class RecommendationServiceImpl implements RecommendationService{
     Logger logger = LoggerFactory.getLogger(RecommendationServiceImpl.class);
@@ -49,16 +34,51 @@ public class RecommendationServiceImpl implements RecommendationService{
     private RatingRepository ratingRepositoy;
 
     @Autowired
-    private UserRepository userRpeository;
+    private UserRepository userRepository;
+
+    @Autowired
+    private RecommendationRepository recommendationRepository;
 
     @Override
     public void updateUsersRecommendations() {
         //Se hace la generación de los data sets
         Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        String fileName = String.valueOf(timestamp.getTime());
         List<UserRating> ratings = ratingRepositoy.findAll();
-        generateDataSetCSV(ratings, String.valueOf(timestamp.getTime()));
-        
+        generateDataSetCSV(ratings, fileName);
 
+        //Se realiza la actualización de las recomendaciones de los usuarios
+        recommendationRepository.deleteAll();
+
+        try{
+            DataModel model = new FileDataModel(new File("src/main/resources/data-sets/" +fileName+".csv"));
+            CityBlockSimilarity similarity = new CityBlockSimilarity(model);
+            UserNeighborhood neighborhood = new ThresholdUserNeighborhood(0.1,similarity, model);
+            UserBasedRecommender recommender = new GenericUserBasedRecommender(model, neighborhood, similarity);
+
+            //Se realiza el eliminado de los registro de la tabla user_recommendations
+
+            
+            List<User> users = userRepository.findAll();
+            for (User user : users) {
+                //Si existe procedemos a obtener sus recomendaciones
+                if(ratingRepositoy.existsByIdUser(user.getId())){
+                    logger.info("Usuario ID: " + user.getId());
+                    // The First argument is the userID and the Second parameter is 'HOW MANY
+                    List<RecommendedItem> recommendations = recommender.recommend(user.getId(), 3);
+                    for (RecommendedItem recommendation : recommendations) {
+                        UserRecommendation userRecommendation = new UserRecommendation();
+                        userRecommendation.setIdUser(user.getId());
+                        userRecommendation.setVideo((int)recommendation.getItemID());
+                        recommendationRepository.save(userRecommendation);
+                        System.out.println(recommendation);
+                    }      
+
+                }
+            }
+		} catch (Exception e) {
+            e.printStackTrace();
+		}
     }
     
     private void generateDataSetCSV(List<UserRating> ratings, String filename){

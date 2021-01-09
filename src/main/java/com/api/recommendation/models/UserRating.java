@@ -32,7 +32,7 @@ public class UserRating {
     private int idUser;
 
     @Column(name = "id_video")
-    private String video;
+    private int idVideo;
 
     @Column
     private int rating;
@@ -48,7 +48,7 @@ public class UserRating {
     public String[] getRatingData(){
         String[] data = new String[3];
         data[0] = String.valueOf(idUser);
-        data[1] = video;
+        data[1] = String.valueOf(idVideo);
         data[2] = String.valueOf(rating);
 
         return data;

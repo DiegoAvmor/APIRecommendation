@@ -1,12 +1,11 @@
 package com.api.recommendation.repository;
-import com.api.recommendation.models.UserRating;
+
+import com.api.recommendation.models.UserRecommendation;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface RatingRepository extends JpaRepository<UserRating,Integer>{
-
-    boolean existsByIdUser(Integer id);
+public interface RecommendationRepository extends JpaRepository<UserRecommendation,Integer>{
     
 }
