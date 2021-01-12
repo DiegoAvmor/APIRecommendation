@@ -77,15 +77,13 @@ public class RecommendationServiceImpl implements RecommendationService{
                         UserRecommendation userRecommendation = new UserRecommendation();
                         userRecommendation.setIdUser(user.getId());
                         userRecommendation.setVideo((int)recommendation.getItemID());
-                        recommendationRepository.save(userRecommendation);
+                        newRecommendations.add(userRecommendation);
                         System.out.println(recommendation);
                     }      
 
                 }
             }
-            if(!newRecommendations.isEmpty()){
-                recommendationRepository.saveAll(newRecommendations);
-            }
+            recommendationRepository.saveAll(newRecommendations);
 		} catch (Exception e) {
             e.printStackTrace();
 		}
