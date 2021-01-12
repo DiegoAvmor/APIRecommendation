@@ -18,7 +18,7 @@ import org.apache.mahout.cf.taste.recommender.UserBasedRecommender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.apache.mahout.cf.taste.impl.similarity.CityBlockSimilarity;
@@ -26,9 +26,11 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@EnableScheduling
 public class RecommendationServiceImpl implements RecommendationService{
     Logger logger = LoggerFactory.getLogger(RecommendationServiceImpl.class);
 
@@ -42,6 +44,7 @@ public class RecommendationServiceImpl implements RecommendationService{
     private RecommendationRepository recommendationRepository;
 
     @Override
+    @Scheduled(cron = "${cron.expression}")
     public void updateUsersRecommendations() {
         logger.info("Cron Task Executed");
         //Se hace la generación de los data sets
@@ -63,6 +66,7 @@ public class RecommendationServiceImpl implements RecommendationService{
 
             
             List<User> users = userRepository.findAll();
+            List<UserRecommendation> newRecommendations = new ArrayList();
             for (User user : users) {
                 //Si existe procedemos a obtener sus recomendaciones
                 if(ratingRepositoy.existsByIdUser(user.getId())){
@@ -78,6 +82,9 @@ public class RecommendationServiceImpl implements RecommendationService{
                     }      
 
                 }
+            }
+            if(!newRecommendations.isEmpty()){
+                recommendationRepository.saveAll(newRecommendations);
             }
 		} catch (Exception e) {
             e.printStackTrace();
